@@ -7,6 +7,8 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -30,23 +32,33 @@ public class BinaryFileSummator {
       throw new IllegalArgumentException("Not supported file format");
     }
 
+    long time = new Date().getTime();
+
     long accumulator = 0;
-    int chunkSize = 16;
 
     ExecutorService executor = Executors.newFixedThreadPool(4);
+    
+    int threads = 2;
+    int intLength = 4;
+    
+    int chunkSize = (int) size/threads;
+
+    if (chunkSize % threads != 0)
+      chunkSize = (chunkSize/intLength)*intLength + intLength; 
     List<Future<Long>> futureResults = new LinkedList<>();
 
     for (long pos = 0; pos < size; pos += chunkSize) {
       futureResults.add(executor.submit(new ChunkReader(file, pos, chunkSize)));
     }
 
+    executor.shutdown();    
+
     for (Future<Long> f : futureResults) {
       accumulator += f.get();
     }
 
-    executor.shutdown();
-
     System.out.println(accumulator);
+    System.out.println("Time: " + (new Date().getTime() - time) + " ms");
   }
 
   public static void printUsage() {
@@ -67,7 +79,7 @@ public class BinaryFileSummator {
     @Override
     public Long call() throws Exception {
       long accumulator = 0;
-      try (SeekableByteChannel channel = Files.newByteChannel(file)) {
+      try (SeekableByteChannel channel = Files.newByteChannel(file, StandardOpenOption.READ)) {
         ByteBuffer buffer = ByteBuffer.allocate(chunkSize);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
 
