@@ -57,8 +57,8 @@ public class BinaryFileSummator {
       accumulator += t.join();
     }
 
-    System.out.println(accumulator);
-    System.out.println("Time: " + (new Date().getTime() - time) + " ms");
+    System.out.println("Result: " + accumulator);
+    System.out.println("Execution time: " + (new Date().getTime() - time) + " ms");
   }
 
   public static void printUsage() {
