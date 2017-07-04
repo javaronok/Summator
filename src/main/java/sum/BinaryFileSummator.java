@@ -15,15 +15,19 @@ import java.nio.file.Paths;
 public class BinaryFileSummator {
 
   public static void main(String[] args) throws IOException {
-    long accumulator = 0;
+    if (args.length != 1) {
+      printUsage();
+      System.exit(1);
+    }
 
-    String path = "data/simple.txt";
-
-    Path file = Paths.get(path);
-
+    Path file = Paths.get(args[0]);
     long size = Files.size(file);
 
-    System.out.println(size);
+    if (size % 4 != 0) {
+      throw new IllegalArgumentException("Not supported file format");
+    }
+
+    long accumulator = 0;
 
     try (SeekableByteChannel channel = Files.newByteChannel(file)) {
       ByteBuffer buffer = ByteBuffer.allocate(8);
@@ -44,5 +48,9 @@ public class BinaryFileSummator {
     }
 
     System.out.println(accumulator);
+  }
+
+  public static void printUsage() {
+    System.out.println("Enter file path");
   }
 }

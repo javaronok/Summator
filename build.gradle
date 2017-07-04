@@ -14,3 +14,10 @@ sourceSets {
         }
     }
 }
+
+task copyJarToBin {
+    copy {
+        from 'build/libs'
+        into "dist"
+    }
+}
