@@ -7,6 +7,7 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Date;
 
 /**
  * User: Gorchakov Dmitriy
@@ -27,8 +28,9 @@ public class BinaryFileSummator {
       throw new IllegalArgumentException("Not supported file format");
     }
 
-    long accumulator = 0;
+    long time = new Date().getTime(); 
 
+    long accumulator = 0;
     try (SeekableByteChannel channel = Files.newByteChannel(file)) {
       ByteBuffer buffer = ByteBuffer.allocate(8);
       buffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -48,6 +50,7 @@ public class BinaryFileSummator {
     }
 
     System.out.println(accumulator);
+    System.out.println("Time: " + (new Date().getTime() - time) + " ms");
   }
 
   public static void printUsage() {
