@@ -35,18 +35,17 @@ public class BinaryFileSummator {
     long time = new Date().getTime();
 
     long accumulator = 0;
+    int threads = Runtime.getRuntime().availableProcessors();
+    long chunkSize = size/threads;
+
+    System.out.println("Available processors: " + threads);
+
+    if (chunkSize % ChunkReader.BUFFER_LENGTH != 0)
+      chunkSize = (chunkSize/ChunkReader.BUFFER_LENGTH)*ChunkReader.BUFFER_LENGTH + ChunkReader.BUFFER_LENGTH; 
 
     ExecutorService executor = Executors.newFixedThreadPool(4);
-    
-    int threads = 2;
-    int intLength = 4;
-    
-    int chunkSize = (int) size/threads;
-
-    if (chunkSize % threads != 0)
-      chunkSize = (chunkSize/intLength)*intLength + intLength; 
     List<Future<Long>> futureResults = new LinkedList<>();
-
+  
     for (long pos = 0; pos < size; pos += chunkSize) {
       futureResults.add(executor.submit(new ChunkReader(file, pos, chunkSize)));
     }
@@ -64,13 +63,15 @@ public class BinaryFileSummator {
   public static void printUsage() {
     System.out.println("Enter file path");
   }
-
+  
   static class ChunkReader implements Callable<Long> {
+    private static final int BUFFER_LENGTH = 8192;
+    
     final Path file;
     final long seekPosition;
-    final int chunkSize;
+    final long chunkSize;
 
-    public ChunkReader(Path file, long seekPosition, int chunkSize) {
+    public ChunkReader(Path file, long seekPosition, long chunkSize) {
       this.file = file;
       this.seekPosition = seekPosition;
       this.chunkSize = chunkSize;
@@ -79,20 +80,25 @@ public class BinaryFileSummator {
     @Override
     public Long call() throws Exception {
       long accumulator = 0;
+      long readBytes = 0;
       try (SeekableByteChannel channel = Files.newByteChannel(file, StandardOpenOption.READ)) {
-        ByteBuffer buffer = ByteBuffer.allocate(chunkSize);
+        ByteBuffer buffer = ByteBuffer.allocate(BUFFER_LENGTH);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
 
         channel.position(seekPosition);
 
         int count = channel.read(buffer);
+        while (readBytes < chunkSize && count != -1) {
+          buffer.rewind();
 
-        buffer.rewind();
-
-        int position = 0;
-        while (position < count) {
-          accumulator += buffer.getInt();
-          position = buffer.position();
+          int position = 0;
+          while (position < count) {
+            accumulator += buffer.getInt();
+            position = buffer.position();
+          }
+          buffer.clear();
+          readBytes += count;
+          count = channel.read(buffer);
         }
       }
       return accumulator;

@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'idea'
 
 group = 'com.solidopinion'
-version = '1.0-SNAPSHOT'
+version = '2.0-SNAPSHOT'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
