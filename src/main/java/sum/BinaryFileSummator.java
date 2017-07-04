@@ -30,9 +30,11 @@ public class BinaryFileSummator {
 
     long time = new Date().getTime(); 
 
+    int bufferLen = 8192;
+
     long accumulator = 0;
     try (SeekableByteChannel channel = Files.newByteChannel(file)) {
-      ByteBuffer buffer = ByteBuffer.allocate(8);
+      ByteBuffer buffer = ByteBuffer.allocate(bufferLen);
       buffer.order(ByteOrder.LITTLE_ENDIAN);
 
       int count = channel.read(buffer);
