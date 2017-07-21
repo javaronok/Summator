@@ -7,12 +7,9 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
-import java.util.concurrent.RecursiveTask;
+import java.util.stream.StreamSupport;
 
 /**
  * User: Gorchakov Dmitriy
@@ -44,68 +41,70 @@ public class BinaryFileSummator {
       throw new IllegalArgumentException("Invalid threads number");
     }
 
-    long accumulator = 0;
     long chunkSize = calcChuckSize(size, threads, bufferLength);
 
-    ForkJoinPool pool = new ForkJoinPool(threads);
-    List<ForkJoinTask<Long>> tasks = new ArrayList<>();
-    for (long pos = 0; pos < size; pos += chunkSize) {
-      tasks.add(pool.submit(new ChunkReaderTask(file, pos, chunkSize, bufferLength)));
+    Iterator<Long> it = new SeekPositionIterator(size, chunkSize);
+    long itSize = (long) Math.ceil((double) size / chunkSize);
+    int characteristics = Spliterator.DISTINCT | Spliterator.ORDERED | Spliterator.NONNULL;
+    return StreamSupport.stream(Spliterators.spliterator(it, itSize, characteristics), false).parallel()
+            .mapToLong(pos -> calcChunk(file, pos, chunkSize, bufferLength)).sum();
+  }
+
+  private class SeekPositionIterator implements Iterator<Long> {
+    final long size;
+    final long chunkSize;
+
+    private long pos = 0;
+
+    public SeekPositionIterator(long size, long chunkSize) {
+      this.size = size;
+      this.chunkSize = chunkSize;
     }
 
-    for (ForkJoinTask<Long> t : tasks) {
-      accumulator += t.join();
+    @Override
+    public boolean hasNext() {
+      return pos < size;
     }
 
-    return accumulator;
+    @Override
+    public Long next() {
+      long next = pos;
+      pos += chunkSize;
+      return next;
+    }
   }
 
   private long calcChuckSize(long size, int threads, int bufferLength) {
     return (long)Math.ceil((double)size/(threads * bufferLength)) * bufferLength;
   }
 
-  static class ChunkReaderTask extends RecursiveTask<Long> {
-    final Path file;
-    final long seekPosition;
-    final long chunkSize;
-    final int bufferLength;
+  private long calcChunk(Path file, long seekPosition, long chunkSize, int bufferLength) {
+    long accumulator = 0;
+    long readBytes = 0;
+    try {
+      try (SeekableByteChannel channel = Files.newByteChannel(file, StandardOpenOption.READ)) {
+        ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
 
-    public ChunkReaderTask(Path file, long seekPosition, long chunkSize, int bufferLength) {
-      this.file = file;
-      this.seekPosition = seekPosition;
-      this.chunkSize = chunkSize;
-      this.bufferLength = bufferLength;
-    }
+        channel.position(seekPosition);
 
-    @Override
-    public Long compute() {
-      long accumulator = 0;
-      long readBytes = 0;
-      try {
-        try (SeekableByteChannel channel = Files.newByteChannel(file, StandardOpenOption.READ)) {
-          ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
-          buffer.order(ByteOrder.LITTLE_ENDIAN);
+        int count = channel.read(buffer);
+        while (readBytes < chunkSize && count != -1) {
+          buffer.rewind();
 
-          channel.position(seekPosition);
-
-          int count = channel.read(buffer);
-          while (readBytes < chunkSize && count != -1) {
-            buffer.rewind();
-
-            int position = 0;
-            while (position < count) {
-              accumulator += buffer.getInt();
-              position = buffer.position();
-            }
-            buffer.clear();
-            readBytes += count;
-            count = channel.read(buffer);
+          int position = 0;
+          while (position < count) {
+            accumulator += buffer.getInt();
+            position = buffer.position();
           }
+          buffer.clear();
+          readBytes += count;
+          count = channel.read(buffer);
         }
-      } catch (IOException e) {
-        throw new RuntimeException("IO error:", e);
       }
-      return accumulator;
+    } catch (IOException e) {
+      throw new RuntimeException("IO error:", e);
     }
+    return accumulator;
   }
 }
