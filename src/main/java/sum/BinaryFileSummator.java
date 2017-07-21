@@ -19,7 +19,7 @@ import java.util.concurrent.RecursiveTask;
  * Date: 01.07.2017.
  */
 public class BinaryFileSummator {
-  private static final int DEFAULT_BUFFER_LENGTH = 8192;
+  public static final int DEFAULT_BUFFER_LENGTH = 8192;
 
   private final Path file;
 
@@ -36,8 +36,12 @@ public class BinaryFileSummator {
     if (size % 4 != 0) {
       throw new IllegalArgumentException("Not supported file format");
     }
-    if (bufferLength % 4 != 0) {
+    if (bufferLength == 0 || bufferLength % 4 != 0) {
       throw new IllegalArgumentException("Invalid buffer length");
+    }
+
+    if (threads == 0) {
+      throw new IllegalArgumentException("Invalid threads number");
     }
 
     long accumulator = 0;
@@ -57,7 +61,7 @@ public class BinaryFileSummator {
   }
 
   private long calcChuckSize(long size, int threads, int bufferLength) {
-    return (long)Math.ceil(size/(threads * bufferLength)) * bufferLength;
+    return (long)Math.ceil((double)size/(threads * bufferLength)) * bufferLength;
   }
 
   static class ChunkReaderTask extends RecursiveTask<Long> {

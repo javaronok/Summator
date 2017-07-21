@@ -9,23 +9,47 @@ import java.util.concurrent.ExecutionException;
 public class SumLauncher {
 
     public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
-        if (args.length != 1) {
+        int argsLength = args.length;
+
+        if (argsLength == 0) {
             printUsage();
             System.exit(1);
         }
 
         Path file = Paths.get(args[0]);
+
         int threads = Runtime.getRuntime().availableProcessors();
+        int bufferLength = BinaryFileSummator.DEFAULT_BUFFER_LENGTH;
+
+        for (int i = 1; i < argsLength; i++) {
+            final String arg = args[i];
+            if (arg.equals("-threads") && ++i < argsLength) {
+                threads = Integer.valueOf(args[i]);
+            } if (arg.equals("-bufferLength") && ++i < argsLength) {
+                bufferLength = Integer.valueOf(args[i]);
+            } if (arg.equals("-help")) {
+                printUsage();
+                System.exit(0);
+            }
+
+        }
+
         System.out.println("Available processors: " + threads);
 
         long time = new Date().getTime();
-        long result = new BinaryFileSummator(file).calcSum();
+        long result = new BinaryFileSummator(file).calcSum(threads, bufferLength);
 
         System.out.println("Result: " + result);
         System.out.println("Execute time: " + (new Date().getTime() - time) + " ms");
     }
 
     public static void printUsage() {
-        System.out.println("Enter file path");
+        System.out.printf("Summator usage:" +
+                "\n" +
+                "<file path> (required, example data/simple.txt)\n" +
+                "-threads <number of processors> (optional)\n" +
+                "-bufferLength <length of buffer> (optional, must be multiple of 4), default: 8192\n" +
+                "-help\n" +
+                "");
     }
 }
