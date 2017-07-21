@@ -7,12 +7,26 @@ version = '2.0-SNAPSHOT'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
 sourceSets {
     main {
         java {
             srcDirs = ['src/main/java']
         }
     }
+    test {
+        java {
+            srcDirs = ['src/test/java']
+        }
+    }
+}
+
+dependencies {
+    testCompile 'junit:junit:4.12'
 }
 
 task copyJarToBin {
