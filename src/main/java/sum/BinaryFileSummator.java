@@ -6,10 +6,8 @@ import java.nio.ByteOrder;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
@@ -21,61 +19,58 @@ import java.util.concurrent.RecursiveTask;
  * Date: 01.07.2017.
  */
 public class BinaryFileSummator {
+  private static final int DEFAULT_BUFFER_LENGTH = 8192;
 
-  public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
-    if (args.length != 1) {
-      printUsage();
-      System.exit(1);
-    }
+  private final Path file;
 
-    Path file = Paths.get(args[0]);
+  public BinaryFileSummator(Path file) {
+    this.file = file;
+  }
+
+  public long calcSum() throws InterruptedException, ExecutionException, IOException {
+    return calcSum(Runtime.getRuntime().availableProcessors(), DEFAULT_BUFFER_LENGTH);
+  }
+
+  public long calcSum(int threads, int bufferLength) throws IOException, ExecutionException, InterruptedException {
     long size = Files.size(file);
-
     if (size % 4 != 0) {
       throw new IllegalArgumentException("Not supported file format");
     }
-
-    long time = new Date().getTime();
+    if (bufferLength % 4 != 0) {
+      throw new IllegalArgumentException("Invalid buffer length");
+    }
 
     long accumulator = 0;
-    int threads = Runtime.getRuntime().availableProcessors();
-    long chunkSize = size/threads;
-
-    System.out.println("Available processors: " + threads);
-
-    if (chunkSize % ChunkReaderTask.BUFFER_LENGTH != 0) {
-      chunkSize = (chunkSize / ChunkReaderTask.BUFFER_LENGTH) * ChunkReaderTask.BUFFER_LENGTH + ChunkReaderTask.BUFFER_LENGTH;
-    }
+    long chunkSize = calcChuckSize(size, threads, bufferLength);
 
     ForkJoinPool pool = new ForkJoinPool(threads);
     List<ForkJoinTask<Long>> tasks = new ArrayList<>();
     for (long pos = 0; pos < size; pos += chunkSize) {
-      tasks.add(pool.submit(new ChunkReaderTask(file, pos, chunkSize)));
+      tasks.add(pool.submit(new ChunkReaderTask(file, pos, chunkSize, bufferLength)));
     }
 
     for (ForkJoinTask<Long> t : tasks) {
       accumulator += t.join();
     }
 
-    System.out.println("Result: " + accumulator);
-    System.out.println("Execution time: " + (new Date().getTime() - time) + " ms");
+    return accumulator;
   }
 
-  public static void printUsage() {
-    System.out.println("Enter file path");
+  private long calcChuckSize(long size, int threads, int bufferLength) {
+    return (long)Math.ceil(size/(threads * bufferLength)) * bufferLength;
   }
-  
+
   static class ChunkReaderTask extends RecursiveTask<Long> {
-    private static final int BUFFER_LENGTH = 8192;
-    
     final Path file;
     final long seekPosition;
     final long chunkSize;
+    final int bufferLength;
 
-    public ChunkReaderTask(Path file, long seekPosition, long chunkSize) {
+    public ChunkReaderTask(Path file, long seekPosition, long chunkSize, int bufferLength) {
       this.file = file;
       this.seekPosition = seekPosition;
       this.chunkSize = chunkSize;
+      this.bufferLength = bufferLength;
     }
 
     @Override
@@ -84,15 +79,15 @@ public class BinaryFileSummator {
       long readBytes = 0;
       try {
         try (SeekableByteChannel channel = Files.newByteChannel(file, StandardOpenOption.READ)) {
-          ByteBuffer buffer = ByteBuffer.allocate(BUFFER_LENGTH);
+          ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
           buffer.order(ByteOrder.LITTLE_ENDIAN);
-  
+
           channel.position(seekPosition);
-  
+
           int count = channel.read(buffer);
           while (readBytes < chunkSize && count != -1) {
             buffer.rewind();
-  
+
             int position = 0;
             while (position < count) {
               accumulator += buffer.getInt();
@@ -108,5 +103,5 @@ public class BinaryFileSummator {
       }
       return accumulator;
     }
-  } 
+  }
 }
