@@ -29,6 +29,10 @@ dependencies {
     testCompile 'junit:junit:4.12'
 }
 
+clean {
+    delete fileTree(dir: 'dist')
+}
+
 task copyJarToBin {
     copy {
         from 'build/libs'

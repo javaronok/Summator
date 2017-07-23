@@ -16,6 +16,11 @@ public class SumLauncher {
             System.exit(1);
         }
 
+        if ("-help".equals(args[0])) {
+          printUsage();
+          System.exit(0);
+        }
+
         Path file = Paths.get(args[0]);
 
         int threads = Runtime.getRuntime().availableProcessors();
@@ -23,15 +28,11 @@ public class SumLauncher {
 
         for (int i = 1; i < argsLength; i++) {
             final String arg = args[i];
-            if (arg.equals("-threads") && ++i < argsLength) {
+            if ("-threads".equals(arg) && ++i < argsLength) {
                 threads = Integer.valueOf(args[i]);
-            } if (arg.equals("-bufferLength") && ++i < argsLength) {
+            } if ("-bufferLength".equals(arg) && ++i < argsLength) {
                 bufferLength = Integer.valueOf(args[i]);
-            } if (arg.equals("-help")) {
-                printUsage();
-                System.exit(0);
             }
-
         }
 
         System.out.println("Available processors: " + threads);
