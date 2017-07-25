@@ -8,6 +8,9 @@ import java.nio.file.*;
 import java.util.Date;
 
 /**
+ * Class write packages of specified sequence integers into file.
+ * It uses for test file generation for check calculation algorithm  
+ * 
  * User: Gorchakov Dmitriy
  * Date: 02.07.2017.
  */

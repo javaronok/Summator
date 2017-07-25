@@ -6,6 +6,9 @@ import java.nio.file.Paths;
 import java.util.Date;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * This class contains entry point for launch file sum operation from command line interface (CLI)  
+ */
 public class SumLauncher {
 
     public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {

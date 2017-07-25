@@ -12,6 +12,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.StreamSupport;
 
 /**
+ * Class calculate the sum of values stored in a user-specified binary file.
+ * Path to file there is required argument for program
+ * 
  * User: Gorchakov Dmitriy
  * Date: 01.07.2017.
  */
@@ -28,6 +31,16 @@ public class BinaryFileSummator {
     return calcSum(Runtime.getRuntime().availableProcessors(), DEFAULT_BUFFER_LENGTH);
   }
 
+  /**
+   * Calculate sum integer values of the file with specified parameters. 
+   * 
+   * @param threads - number of threads 
+   * @param bufferLength - file buffer length
+   * @return calculation result
+   * @throws IOException
+   * @throws ExecutionException
+   * @throws InterruptedException
+   */
   public long calcSum(int threads, int bufferLength) throws IOException, ExecutionException, InterruptedException {
     long size = Files.size(file);
     if (size % 4 != 0) {
@@ -50,6 +63,9 @@ public class BinaryFileSummator {
             .mapToLong(pos -> calcChunk(file, pos, chunkSize, bufferLength)).sum();
   }
 
+  /**
+   * Iterator returns sequence of seek positions in file for reading chunks.  
+   */
   private class SeekPositionIterator implements Iterator<Long> {
     final long size;
     final long chunkSize;
@@ -74,10 +90,29 @@ public class BinaryFileSummator {
     }
   }
 
+  /**
+   * Calculation chunk size for effective parallel read 
+   * 
+   * @param size - amount file size
+   * @param threads - number of threads
+   * @param bufferLength - file buffer length
+   * @return chunk size
+   */
   private long calcChuckSize(long size, int threads, int bufferLength) {
     return (long)Math.ceil((double)size/(threads * bufferLength)) * bufferLength;
   }
 
+  /**
+   * Calculation integer values containing in chunk. 
+   * Method can be called from different threads in parallel mode.
+   * File is reading from specified seek position for size bytes 
+   * 
+   * @param file - source file
+   * @param seekPosition - start seek position
+   * @param chunkSize - size of reading bytes
+   * @param bufferLength - file buffer length 
+   * @return calculation result for chunk
+   */
   private long calcChunk(Path file, long seekPosition, long chunkSize, int bufferLength) {
     long accumulator = 0;
     long readBytes = 0;
