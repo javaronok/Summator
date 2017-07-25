@@ -116,26 +116,24 @@ public class BinaryFileSummator {
   private long calcChunk(Path file, long seekPosition, long chunkSize, int bufferLength) {
     long accumulator = 0;
     long readBytes = 0;
-    try {
-      try (SeekableByteChannel channel = Files.newByteChannel(file, StandardOpenOption.READ)) {
-        ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
+    try (SeekableByteChannel channel = Files.newByteChannel(file, StandardOpenOption.READ)) {
+      ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
+      buffer.order(ByteOrder.LITTLE_ENDIAN);
 
-        channel.position(seekPosition);
+      channel.position(seekPosition);
 
-        int count = channel.read(buffer);
-        while (readBytes < chunkSize && count != -1) {
-          buffer.rewind();
+      int count = channel.read(buffer);
+      while (readBytes < chunkSize && count != -1) {
+        buffer.rewind();
 
-          int position = 0;
-          while (position < count) {
-            accumulator += buffer.getInt();
-            position = buffer.position();
-          }
-          buffer.clear();
-          readBytes += count;
-          count = channel.read(buffer);
+        int position = 0;
+        while (position < count) {
+          accumulator += buffer.getInt();
+          position = buffer.position();
         }
+        buffer.clear();
+        readBytes += count;
+        count = channel.read(buffer);
       }
     } catch (IOException e) {
       throw new RuntimeException("IO error:", e);
