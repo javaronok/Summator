@@ -48,7 +48,10 @@ public class SumLauncher {
         long time = new Date().getTime();
         long result = new BinaryFileSummator(file).calcSum(threads, bufferLength);
 
-        System.out.println(isDebug ? "Result: " : "" + result);
+        if (isDebug) {
+          System.out.print("Result: ");
+        }
+        System.out.println(result);
 
         if (isDebug)  
           System.out.println("Execute time: " + (new Date().getTime() - time) + " ms");
